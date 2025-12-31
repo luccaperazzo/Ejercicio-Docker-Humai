@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-bank
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # ✅ bind mount local para datos de la DB
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+    ports:
+      - "5050:80"
+    volumes:
+      # ✅ volumen nombrado para conservar conexiones/config de pgAdmin
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  loader:
+    build: ./loader
+    container_name: bank-loader
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: bank
+      TABLE_NAME: clients
+      CSV_URL: https://storage.googleapis.com/humai-datasets/aws_s3/python_dev/5_Docker/ejercicios/bank-additional-full.csv
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Se ejecuta y termina (no queda corriendo)
+    restart: "no"
+
+volumes:
+  pgadmin-data:
